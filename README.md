@@ -2,6 +2,8 @@
 
 A single, self-contained HTML page that converts Markdown into rich text you can paste straight into a Confluence page — headings, lists, tables, code blocks and all.
 
+![Screenshot of the converter: a Markdown source panel on the left, a live rich-text preview on the right, and a success toast confirming the copy](screenshot.png)
+
 ## Usage
 
 1. Open `index.html` in a browser (double-click it — no server, no install, works offline from `file://`).
