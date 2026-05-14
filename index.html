@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown &#10230; Confluence</title>
+<style>
+  :root{
+    --paper:#efe9da;
+    --paper-2:#f7f3e8;
+    --paper-3:#fbf9f2;
+    --ink:#211c15;
+    --ink-soft:#5c5346;
+    --muted:#988b76;
+    --rule:#cdc4ad;
+    --rule-soft:#ddd5c0;
+    --accent:#c5402a;
+    --accent-ink:#7c2616;
+    --link:#2c4a6e;
+    --code-bg:#2a241c;
+    --code-fg:#e9e1cd;
+    --font-display:'Hoefler Text','Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+    --font-body:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,'Times New Roman',serif;
+    --font-mono:'JetBrains Mono','SF Mono','Cascadia Code','Fira Code','Roboto Mono',Menlo,Consolas,monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:var(--font-body);
+    color:var(--ink);
+    background:var(--paper);
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  /* paper grain */
+  body::before{
+    content:"";
+    position:fixed;inset:0;
+    pointer-events:none;z-index:1;
+    opacity:.04;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .app{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;}
+
+  /* ---------- header ---------- */
+  header{
+    flex:none;
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:1.5rem;flex-wrap:wrap;
+    padding:1.15rem 1.6rem .95rem;
+    background:var(--paper-2);
+    border-bottom:3px double var(--ink);
+    animation:rise .5s cubic-bezier(.2,.7,.2,1) both;
+  }
+  .brand h1{
+    margin:0;
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(1.4rem,2.6vw,2rem);
+    letter-spacing:.01em;
+    line-height:1;
+  }
+  .brand h1 .arrow{color:var(--accent);font-style:normal;padding:0 .12em;}
+  .brand p{
+    margin:.5rem 0 0;
+    font-family:var(--font-mono);
+    font-size:.66rem;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  .actions{display:flex;align-items:center;gap:.9rem;}
+  .kbd-hint{
+    font-family:var(--font-mono);
+    font-size:.62rem;letter-spacing:.12em;
+    color:var(--muted);text-transform:uppercase;
+    text-align:right;line-height:1.5;
+  }
+  .kbd-hint b{
+    color:var(--ink-soft);font-weight:400;
+    border:1px solid var(--rule);border-radius:3px;
+    padding:.05em .35em;background:var(--paper-3);
+  }
+  .stamp-btn{
+    font-family:var(--font-mono);
+    font-size:.74rem;font-weight:700;
+    letter-spacing:.16em;text-transform:uppercase;
+    color:var(--paper-2);
+    background:var(--accent);
+    border:none;border-radius:2px;
+    padding:.85rem 1.45rem;
+    cursor:pointer;
+    box-shadow:4px 4px 0 var(--ink);
+    transition:transform .07s ease,box-shadow .07s ease;
+  }
+  .stamp-btn:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--ink);}
+  .stamp-btn:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--ink);}
+  .stamp-btn:focus-visible{outline:2px solid var(--ink);outline-offset:3px;}
+
+  /* ---------- main ---------- */
+  main{
+    flex:1;min-height:0;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  .panel{
+    display:flex;flex-direction:column;
+    min-width:0;min-height:0;
+    background:var(--paper-3);
+    animation:rise .6s cubic-bezier(.2,.7,.2,1) both;
+  }
+  .panel.source{border-right:1px solid var(--rule);background:var(--paper-2);}
+  .panel.source{animation-delay:.06s;}
+  .panel.preview-pane{animation-delay:.15s;}
+
+  .panel-head{
+    flex:none;
+    display:flex;align-items:baseline;gap:.7rem;
+    padding:.7rem 1.4rem;
+    border-bottom:1px solid var(--rule);
+  }
+  .panel-head .num{
+    font-family:var(--font-display);
+    font-size:1.5rem;color:var(--accent);
+    line-height:1;font-weight:600;
+  }
+  .panel-head .label{
+    font-family:var(--font-mono);
+    font-size:.7rem;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--ink-soft);
+  }
+  .panel-head .tag{
+    margin-left:auto;
+    font-family:var(--font-mono);
+    font-size:.6rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);
+    border:1px solid var(--rule);border-radius:99px;
+    padding:.2em .7em;
+  }
+
+  /* editor */
+  #input{
+    flex:1;min-height:0;width:100%;
+    resize:none;border:none;outline:none;
+    background:transparent;
+    padding:1.35rem 1.5rem;
+    font-family:var(--font-mono);
+    font-size:.9rem;line-height:1.72;
+    color:var(--ink);
+    tab-size:2;
+  }
+  #input::placeholder{color:var(--muted);}
+  .panel.source:focus-within{box-shadow:inset 3px 0 0 var(--accent);}
+
+  /* preview */
+  #preview{
+    flex:1;min-height:0;overflow:auto;
+    padding:1.5rem 1.8rem 3rem;
+    line-height:1.62;
+  }
+  #preview .ph{color:var(--muted);font-style:italic;}
+
+  #preview h1,#preview h2,#preview h3,
+  #preview h4,#preview h5,#preview h6{
+    font-family:var(--font-display);
+    font-weight:600;line-height:1.22;
+    margin:1.6em 0 .5em;
+  }
+  #preview > :first-child{margin-top:0;}
+  #preview h1{font-size:1.85rem;padding-bottom:.18em;border-bottom:2px solid var(--ink);}
+  #preview h2{font-size:1.45rem;padding-bottom:.14em;border-bottom:1px solid var(--rule);}
+  #preview h3{font-size:1.2rem;}
+  #preview h4{font-size:1.04rem;}
+  #preview h5{font-size:.92rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
+  #preview h6{font-size:.82rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+  #preview p{margin:.7em 0;}
+  #preview a{color:var(--link);text-underline-offset:2px;}
+  #preview strong{font-weight:700;}
+  #preview ul,#preview ol{margin:.6em 0;padding-left:1.5em;}
+  #preview li{margin:.25em 0;}
+  #preview li::marker{color:var(--accent);}
+  #preview blockquote{
+    margin:1em 0;padding:.2em 0 .2em 1.1em;
+    border-left:3px solid var(--accent);
+    color:var(--ink-soft);font-style:italic;
+  }
+  #preview blockquote p{margin:.35em 0;}
+  #preview hr{
+    border:none;border-top:1px solid var(--rule);
+    margin:1.8em 0;
+  }
+  #preview code{
+    font-family:var(--font-mono);font-size:.84em;
+    background:rgba(197,64,42,.1);color:var(--accent-ink);
+    padding:.12em .38em;border-radius:3px;
+  }
+  #preview pre{
+    background:var(--code-bg);color:var(--code-fg);
+    padding:1rem 1.1rem;border-radius:3px;
+    overflow:auto;margin:1em 0;
+    box-shadow:3px 3px 0 var(--rule-soft);
+  }
+  #preview pre code{
+    background:none;color:inherit;padding:0;font-size:.84rem;
+    line-height:1.55;
+  }
+  #preview table{
+    border-collapse:collapse;margin:1.1em 0;width:100%;
+    font-size:.92rem;
+  }
+  #preview th,#preview td{
+    border:1px solid var(--rule);
+    padding:.45em .7em;text-align:left;
+  }
+  #preview th{background:var(--paper-2);font-family:var(--font-display);}
+  #preview tbody tr:nth-child(even){background:var(--paper);}
+
+  /* ---------- status bar ---------- */
+  footer{
+    flex:none;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:1rem;
+    padding:.5rem 1.5rem;
+    background:var(--paper-2);
+    border-top:3px double var(--ink);
+    font-family:var(--font-mono);
+    font-size:.66rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  #status{color:var(--ink-soft);transition:color .2s;}
+  #status.ok{color:var(--accent);}
+  #status.err{color:var(--accent-ink);}
+
+  /* ---------- copy stamp overlay ---------- */
+  .stamp-overlay{
+    position:fixed;inset:0;z-index:50;
+    display:grid;place-items:center;
+    pointer-events:none;
+  }
+  .stamp-mark{
+    font-family:var(--font-mono);font-weight:700;
+    font-size:clamp(2.6rem,11vw,8rem);
+    letter-spacing:.04em;
+    color:var(--accent);
+    border:6px solid var(--accent);
+    border-radius:10px;
+    padding:.12em .32em;
+    transform:rotate(-11deg) scale(1);
+    opacity:0;
+  }
+  .stamp-mark.err{color:var(--ink-soft);border-color:var(--ink-soft);}
+  .stamp-overlay.show .stamp-mark{animation:stamp 1.15s ease-out;}
+  @keyframes stamp{
+    0%{opacity:0;transform:rotate(-11deg) scale(1.9);}
+    14%{opacity:1;transform:rotate(-11deg) scale(.92);}
+    26%{transform:rotate(-11deg) scale(1.06);}
+    38%{transform:rotate(-11deg) scale(1);}
+    78%{opacity:1;}
+    100%{opacity:0;transform:rotate(-11deg) scale(1);}
+  }
+
+  @keyframes rise{
+    from{opacity:0;transform:translateY(12px);}
+    to{opacity:1;transform:none;}
+  }
+
+  /* scrollbars */
+  #preview::-webkit-scrollbar,#input::-webkit-scrollbar,#preview pre::-webkit-scrollbar{width:10px;height:10px;}
+  #preview::-webkit-scrollbar-thumb,#input::-webkit-scrollbar-thumb{
+    background:var(--rule);border:3px solid var(--paper-3);border-radius:99px;
+  }
+
+  @media (max-width:840px){
+    body{overflow:auto;}
+    .app{height:auto;min-height:100%;}
+    main{grid-template-columns:1fr;}
+    .panel.source{border-right:none;border-bottom:1px solid var(--rule);}
+    #input,#preview{min-height:48vh;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms!important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <h1>Markdown<span class="arrow">&#10230;</span>Confluence</h1>
+      <p>paste markdown &middot; stamp it &middot; paste into confluence</p>
+    </div>
+    <div class="actions">
+      <div class="kbd-hint">copy<br><b>Ctrl</b>+<b>&#8629;</b></div>
+      <button id="copyBtn" class="stamp-btn">Copy for Confluence</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel source">
+      <div class="panel-head">
+        <span class="num">01</span>
+        <span class="label">Source</span>
+        <span class="tag">markdown</span>
+      </div>
+      <textarea id="input" spellcheck="false" placeholder="Paste your Markdown here..."># Release Notes &mdash; Q2
+
+A quick **summary** of what shipped this quarter, with _details_ below.
+
+## Highlights
+
+- Faster sync engine
+  - Background indexing
+  - Conflict resolution
+- New **table** support
+- Bug fixes and `polish`
+
+## Metrics
+
+| Metric        |    Q1 |    Q2 |
+|---------------|------:|------:|
+| Active users  | 1,200 | 1,840 |
+| Avg load time | 820ms | 410ms |
+
+> Performance is a feature, not an afterthought.
+
+## Snippet
+
+```js
+function greet(name) {
+  return "Hello, " + name + "!";
+}
+```
+
+See the [full changelog](https://example.com) for more.
+
+---
+</textarea>
+    </section>
+
+    <section class="panel preview-pane">
+      <div class="panel-head">
+        <span class="num">02</span>
+        <span class="label">Preview</span>
+        <span class="tag">rich text</span>
+      </div>
+      <div id="preview"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span id="count">0 words</span>
+    <span id="status">ready</span>
+  </footer>
+</div>
+
+<div class="stamp-overlay" id="overlay" aria-hidden="true">
+  <div class="stamp-mark" id="stampMark">COPIED</div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Markdown -> HTML
+   A compact block + inline parser. Output is semantic HTML
+   that Confluence's editor maps onto its own elements on paste.
+   ============================================================ */
+
+function escapeHtml(s){
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function parseInline(text){
+  const stash = [];
+  const keep = function(html){ stash.push(html); return " S" + (stash.length - 1) + " "; };
+
+  let s = text;
+
+  // inline code — protect raw, escape its own contents
+  s = s.replace(/`([^`]+)`/g, function(m,c){ return keep("<code>" + escapeHtml(c) + "</code>"); });
+
+  // links [text](url "title")
+  s = s.replace(/\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, function(m,t,u,ti){
+    return keep('<a href="' + escapeHtml(u) + '" target="_blank" rel="noopener"' +
+      (ti ? ' title="' + escapeHtml(ti) + '"' : "") + ">" + escapeHtml(t) + "</a>");
+  });
+
+  // escape everything else (placeholders survive — they contain no & < >)
+  s = escapeHtml(s);
+
+  // emphasis — bold before italic so ** / __ win
+  s = s.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/__([^_]+?)__/g, "<strong>$1</strong>");
+  s = s.replace(/\*([^*]+?)\*/g, "<em>$1</em>");
+  s = s.replace(/(^|[^a-zA-Z0-9])_([^_]+?)_(?![a-zA-Z0-9])/g, "$1<em>$2</em>");
+  s = s.replace(/~~([^~]+?)~~/g, "<del>$1</del>");
+
+  // restore protected spans
+  s = s.replace(/ S(\d+) /g, function(m,i){ return stash[i]; });
+  return s;
+}
+
+function buildList(rawLines){
+  const items = [];
+  for (let li = 0; li < rawLines.length; li++){
+    const line = rawLines[li];
+    const m = line.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+    if (m){
+      items.push({
+        indent: m[1].replace(/\t/g, "  ").length,
+        ordered: /\d/.test(m[2]),
+        text: m[3],
+        extra: []
+      });
+    } else if (items.length){
+      items[items.length - 1].extra.push(line.trim());
+    }
+  }
+  if (!items.length) return "";
+
+  let pos = 0;
+  function build(minIndent){
+    const tag = items[pos].ordered ? "ol" : "ul";
+    let html = "<" + tag + ">";
+    while (pos < items.length && items[pos].indent >= minIndent){
+      const it = items[pos];
+      const raw = it.text + (it.extra.length ? " " + it.extra.join(" ") : "");
+      pos++;
+      let children = "";
+      if (pos < items.length && items[pos].indent > it.indent){
+        children = build(items[pos].indent);
+      }
+      html += "<li>" + parseInline(raw) + children + "</li>";
+    }
+    return html + "</" + tag + ">";
+  }
+  return build(items[0].indent);
+}
+
+function parseMarkdown(src){
+  const lines = src.replace(/\r\n?/g, "\n").split("\n");
+  let html = "";
+  let i = 0;
+
+  while (i < lines.length){
+    const line = lines[i];
+
+    // blank
+    if (/^\s*$/.test(line)){ i++; continue; }
+
+    // fenced code block
+    const fence = line.match(/^\s*```+\s*([\w-]*)\s*$/);
+    if (fence){
+      const lang = fence[1];
+      const code = [];
+      i++;
+      while (i < lines.length && !/^\s*```+\s*$/.test(lines[i])){ code.push(lines[i]); i++; }
+      i++; // closing fence
+      html += "<pre><code" + (lang ? ' class="language-' + lang + '"' : "") + ">" +
+              escapeHtml(code.join("\n")) + "</code></pre>";
+      continue;
+    }
+
+    // heading
+    const h = line.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/);
+    if (h){
+      const lvl = h[1].length;
+      html += "<h" + lvl + ">" + parseInline(h[2]) + "</h" + lvl + ">";
+      i++; continue;
+    }
+
+    // horizontal rule
+    if (/^\s*([-*_])\s*(\1\s*){2,}$/.test(line)){
+      html += "<hr>"; i++; continue;
+    }
+
+    // table — header row + separator row
+    if (line.indexOf("|") !== -1 && i + 1 < lines.length &&
+        /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(lines[i + 1])){
+      const parseRow = function(r){
+        return r.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map(function(c){ return c.trim(); });
+      };
+      const headers = parseRow(line);
+      const aligns = parseRow(lines[i + 1]).map(function(spec){
+        const l = spec.charAt(0) === ":", r = spec.charAt(spec.length - 1) === ":";
+        return (l && r) ? "center" : r ? "right" : l ? "left" : "";
+      });
+      i += 2;
+      const body = [];
+      while (i < lines.length && lines[i].indexOf("|") !== -1 && !/^\s*$/.test(lines[i])){
+        body.push(parseRow(lines[i])); i++;
+      }
+      const cell = function(tag, content, idx){
+        return "<" + tag + (aligns[idx] ? ' style="text-align:' + aligns[idx] + '"' : "") + ">" +
+               parseInline(content || "") + "</" + tag + ">";
+      };
+      let t = "<table><thead><tr>";
+      headers.forEach(function(c, idx){ t += cell("th", c, idx); });
+      t += "</tr></thead><tbody>";
+      body.forEach(function(row){
+        t += "<tr>";
+        headers.forEach(function(_, idx){ t += cell("td", row[idx], idx); });
+        t += "</tr>";
+      });
+      html += t + "</tbody></table>";
+      continue;
+    }
+
+    // blockquote
+    if (/^\s*>/.test(line)){
+      const quote = [];
+      while (i < lines.length && /^\s*>/.test(lines[i])){
+        quote.push(lines[i].replace(/^\s*>\s?/, "")); i++;
+      }
+      html += "<blockquote>" + parseMarkdown(quote.join("\n")) + "</blockquote>";
+      continue;
+    }
+
+    // list (bullet or ordered, with nesting via indentation)
+    if (/^\s*([-*+]|\d+[.)])\s+/.test(line)){
+      const listLines = [];
+      while (i < lines.length && (
+              /^\s*([-*+]|\d+[.)])\s+/.test(lines[i]) ||
+              (/^\s+\S/.test(lines[i]) && listLines.length))){
+        listLines.push(lines[i]); i++;
+      }
+      html += buildList(listLines);
+      continue;
+    }
+
+    // paragraph — gather until a blank line or a new block starts
+    const para = [];
+    while (i < lines.length && !/^\s*$/.test(lines[i]) &&
+           !/^\s*```+/.test(lines[i]) &&
+           !/^#{1,6}\s+/.test(lines[i]) &&
+           !/^\s*>/.test(lines[i]) &&
+           !/^\s*([-*+]|\d+[.)])\s+/.test(lines[i]) &&
+           !/^\s*([-*_])\s*(\2\s*){2,}$/.test(lines[i])){
+      para.push(lines[i]); i++;
+    }
+    html += "<p>" + parseInline(para.join("\n")).replace(/\n/g, "<br>") + "</p>";
+  }
+
+  return html;
+}
+
+/* ============================================================
+   Wiring
+   ============================================================ */
+
+const inputEl   = document.getElementById("input");
+const previewEl = document.getElementById("preview");
+const countEl   = document.getElementById("count");
+const statusEl  = document.getElementById("status");
+const copyBtn   = document.getElementById("copyBtn");
+const overlay   = document.getElementById("overlay");
+const stampMark = document.getElementById("stampMark");
+
+let lastHtml = "";
+
+function setStatus(msg, kind){
+  statusEl.textContent = msg;
+  statusEl.className = kind || "";
+}
+
+function render(){
+  const md = inputEl.value;
+  lastHtml = parseMarkdown(md);
+  previewEl.innerHTML = lastHtml || '<p class="ph">Your formatted preview appears here.</p>';
+  const words = md.trim() ? md.trim().split(/\s+/).length : 0;
+  countEl.textContent = words + (words === 1 ? " word" : " words") + " · " + md.length + " chars";
+}
+
+let renderTimer;
+inputEl.addEventListener("input", function(){
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(render, 120);
+});
+
+// Tab inserts spaces; Ctrl/Cmd+Enter copies
+inputEl.addEventListener("keydown", function(e){
+  if (e.key === "Tab"){
+    e.preventDefault();
+    const s = inputEl.selectionStart, en = inputEl.selectionEnd;
+    inputEl.value = inputEl.value.slice(0, s) + "  " + inputEl.value.slice(en);
+    inputEl.selectionStart = inputEl.selectionEnd = s + 2;
+    render();
+  } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter"){
+    e.preventDefault();
+    copyForConfluence();
+  }
+});
+
+function showStamp(ok){
+  stampMark.textContent = ok ? "COPIED" : "RETRY";
+  stampMark.classList.toggle("err", !ok);
+  overlay.classList.remove("show");
+  void overlay.offsetWidth; // restart animation
+  overlay.classList.add("show");
+}
+
+function fallbackCopy(html){
+  // contenteditable + execCommand preserves rich text where the
+  // async Clipboard API is unavailable (older browsers, some file:// cases)
+  const holder = document.createElement("div");
+  holder.contentEditable = "true";
+  holder.innerHTML = html;
+  holder.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;";
+  document.body.appendChild(holder);
+  const range = document.createRange();
+  range.selectNodeContents(holder);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  sel.removeAllRanges();
+  document.body.removeChild(holder);
+  return ok;
+}
+
+async function copyForConfluence(){
+  render(); // make sure lastHtml is current
+  if (!lastHtml){
+    setStatus("nothing to copy", "err");
+    showStamp(false);
+    return;
+  }
+  const plain = inputEl.value;
+  try {
+    if (navigator.clipboard && window.ClipboardItem){
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html":  new Blob([lastHtml], { type: "text/html" }),
+          "text/plain": new Blob([plain],    { type: "text/plain" })
+        })
+      ]);
+      setStatus("copied — paste into Confluence", "ok");
+      showStamp(true);
+      return;
+    }
+  } catch (e){ /* fall through to execCommand */ }
+
+  const ok = fallbackCopy(lastHtml);
+  setStatus(ok ? "copied — paste into Confluence" : "copy failed — select & copy manually", ok ? "ok" : "err");
+  showStamp(ok);
+}
+
+copyBtn.addEventListener("click", copyForConfluence);
+
+render();
+</script>
+</body>
+</html>
